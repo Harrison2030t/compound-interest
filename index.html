@@ -438,14 +438,14 @@
   function fmtWon(n) {
     if (n >= 100000000) return (n / 100000000).toFixed(2).replace(/\.?0+$/, '') + '억원';
     if (n >= 10000000) return (n / 10000000).toFixed(1).replace(/\.?0+$/, '') + '천만원';
-    if (n >= 1000000) return (n / 1000000).toFixed(0) + '만원';
+    if (n >= 10000) return (n / 10000).toFixed(0) + '만원';
     return n.toLocaleString('ko-KR') + '원';
   }
 
   function fmtShort(n) {
     if (n >= 100000000) return (n / 100000000).toFixed(1) + '억';
     if (n >= 10000000) return (n / 10000000).toFixed(1) + '천만';
-    if (n >= 1000000) return (n / 1000000).toFixed(0) + '만';
+    if (n >= 10000) return (n / 10000).toFixed(0) + '만';
     return n.toLocaleString('ko-KR');
   }
 
