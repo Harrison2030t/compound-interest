@@ -1,93 +1,490 @@
-
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>복리의 마법 — 자산 성장 시뮬레이터</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
 <style>
-  .ctrl { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
-  .ctrl label { font-size: 13px; color: var(--color-text-secondary); min-width: 80px; }
-  .ctrl input[type=range] { flex: 1; }
-  .ctrl .val { font-size: 14px; font-weight: 500; min-width: 56px; text-align: right; color: var(--color-text-primary); }
-  .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin: 1.5rem 0; }
-  .card { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; }
-  .card-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
-  .card-value { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
-  .card-value.highlight { color: #1D9E75; }
-  .tip { font-size: 13px; color: var(--color-text-secondary); margin-top: 1rem; border-top: 0.5px solid var(--color-border-tertiary); padding-top: 1rem; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --border: rgba(255,255,255,0.07);
+    --accent: #4ade80;
+    --accent2: #86efac;
+    --accent-dim: rgba(74,222,128,0.12);
+    --muted: #a8b2c8;
+    --text: #e8ecf4;
+    --danger: #f87171;
+    --gold: #fbbf24;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding-bottom: 3rem;
+  }
+
+  /* Header */
+  .hero {
+    text-align: center;
+    padding: 3rem 1.5rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%; transform: translateX(-50%);
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(74,222,128,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+  }
+  .hero h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .hero p {
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+
+  /* Main container */
+  .container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  /* Result cards */
+  .result-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-card.wide {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(74,222,128,0.03));
+    border-color: rgba(74,222,128,0.25);
+  }
+  .result-card.wide::after {
+    content: '★';
+    position: absolute;
+    right: 1rem; top: 50%; transform: translateY(-50%);
+    font-size: 20px;
+    color: var(--accent);
+    opacity: 0.4;
+  }
+  .card-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    font-weight: 400;
+  }
+  .card-value {
+    font-size: clamp(1.1rem, 4vw, 1.4rem);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .card-value.green { color: var(--accent); }
+  .card-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  /* Controls panel */
+  .controls {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .ctrl-group { margin-bottom: 1.4rem; }
+  .ctrl-group:last-child { margin-bottom: 0; }
+  .ctrl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.6rem;
+  }
+  .ctrl-name {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .ctrl-val {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.01em;
+  }
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--surface2);
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(74,222,128,0.2);
+    cursor: pointer;
+    transition: box-shadow 0.2s;
+  }
+  input[type=range]:active::-webkit-slider-thumb {
+    box-shadow: 0 0 0 7px rgba(74,222,128,0.2);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Chart */
+  .chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.25rem 1rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .chart-title {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 1rem;
+    letter-spacing: 0.03em;
+  }
+  .chart-area {
+    position: relative;
+    width: 100%;
+    height: 220px;
+  }
+  canvas { border-radius: 8px; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* Insight box */
+  .insight {
+    background: var(--accent-dim);
+    border: 1px solid rgba(74,222,128,0.2);
+    border-radius: 16px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .insight-title {
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+  }
+  .insight-text {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .insight-text strong { color: var(--accent); font-weight: 700; }
+
+  /* Yearly table */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .table-header {
+    padding: 1rem 1.25rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-header h3 {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    padding: 0.5rem 0.75rem;
+    text-align: right;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  thead th:first-child { text-align: center; }
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody tr.milestone { background: rgba(74,222,128,0.05); }
+  tbody td {
+    padding: 0.55rem 0.75rem;
+    text-align: right;
+    color: var(--text);
+  }
+  tbody td:first-child {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .td-green { color: var(--accent); font-weight: 500; }
+  .td-gold { color: var(--gold); font-weight: 600; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 2rem 1rem 0;
+    font-size: 12px;
+    color: rgba(168,178,200,0.4);
+  }
+
+  /* Fade in animation */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .result-cards, .controls, .chart-wrap, .insight, .table-wrap {
+    animation: fadeUp 0.4s ease both;
+  }
+  .controls { animation-delay: 0.05s; }
+  .chart-wrap { animation-delay: 0.1s; }
+  .insight { animation-delay: 0.15s; }
+  .table-wrap { animation-delay: 0.2s; }
 </style>
+</head>
+<body>
 
-<div style="padding: 1rem 0;">
-  <div class="ctrl">
-    <label>초기 투자금</label>
-    <input type="range" id="principal" min="100" max="10000" step="100" value="1000">
-    <span class="val" id="p-out">₩1,000</span>
-  </div>
-  <div class="ctrl">
-    <label>연 수익률</label>
-    <input type="range" id="rate" min="1" max="20" step="0.5" value="7">
-    <span class="val" id="r-out">7%</span>
-  </div>
-  <div class="ctrl">
-    <label>투자 기간</label>
-    <input type="range" id="years" min="1" max="40" step="1" value="20">
-    <span class="val" id="y-out">20년</span>
-  </div>
+<div class="hero">
+  <div class="hero-label">자산 성장 시뮬레이터</div>
+  <h1>복리의 <em>마법</em></h1>
+  <p>시간이 돈을 만든다. 지금 시작하면 얼마가 될까?</p>
+</div>
 
-  <div class="cards">
-    <div class="card">
+<div class="container">
+
+  <!-- Result Cards -->
+  <div class="result-cards">
+    <div class="result-card">
       <div class="card-label">원금</div>
-      <div class="card-value" id="c-principal">₩1,000</div>
+      <div class="card-value" id="r-principal">—</div>
     </div>
-    <div class="card">
-      <div class="card-label">단순 이자 합계</div>
-      <div class="card-value" id="c-simple">₩2,400</div>
+    <div class="result-card">
+      <div class="card-label">단순 이자</div>
+      <div class="card-value" id="r-simple">—</div>
+      <div class="card-sub" id="r-simple-sub"></div>
     </div>
-    <div class="card">
-      <div class="card-label">복리 합계</div>
-      <div class="card-value highlight" id="c-compound">₩3,870</div>
+    <div class="result-card wide">
+      <div class="card-label">복리 최종 금액</div>
+      <div class="card-value green" id="r-compound">—</div>
+      <div class="card-sub" id="r-compound-sub"></div>
     </div>
   </div>
 
-  <div style="position: relative; width: 100%; height: 260px;">
-    <canvas id="chart"></canvas>
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <div class="ctrl-header">
+        <span class="ctrl-name">초기 투자금</span>
+        <span class="ctrl-val" id="v-principal">1,000만원</span>
+      </div>
+      <input type="range" id="s-principal" min="0" max="19" step="1" value="4">
+    </div>
+    <div class="ctrl-group">
+      <div class="ctrl-header">
+        <span class="ctrl-name">연 수익률</span>
+        <span class="ctrl-val" id="v-rate">7%</span>
+      </div>
+      <input type="range" id="s-rate" min="1" max="20" step="0.5" value="7">
+    </div>
+    <div class="ctrl-group">
+      <div class="ctrl-header">
+        <span class="ctrl-name">투자 기간</span>
+        <span class="ctrl-val" id="v-years">20년</span>
+      </div>
+      <input type="range" id="s-years" min="1" max="40" step="1" value="20">
+    </div>
   </div>
 
-  <div class="tip" id="tip-text"></div>
+  <!-- Chart -->
+  <div class="chart-wrap">
+    <div class="chart-title">연도별 자산 성장 곡선</div>
+    <div class="chart-area">
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4ade80"></div>복리</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#6b7280; border-style:dashed"></div>단순 이자</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#374151"></div>원금</div>
+    </div>
+  </div>
+
+  <!-- Insight -->
+  <div class="insight">
+    <div class="insight-title">💡 복리 인사이트</div>
+    <div class="insight-text" id="insight-text">계산 중...</div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-header"><h3>주요 연도별 자산 현황</h3></div>
+    <table>
+      <thead>
+        <tr>
+          <th>연도</th>
+          <th>원금</th>
+          <th>단순이자</th>
+          <th>복리</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+
+  <div class="footer">슬라이더를 조정하여 나만의 투자 시뮬레이션을 해보세요</div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
-  const fmt = n => '₩' + Math.round(n).toLocaleString('ko-KR');
+  // 투자금 단계: 100만 ~ 1억 (20단계)
+  const principalSteps = [
+    1000000, 2000000, 3000000, 5000000,
+    10000000, 15000000, 20000000, 30000000,
+    50000000, 60000000, 70000000, 80000000,
+    90000000, 100000000,
+    // 추가 중간값
+    4000000, 7000000, 12000000, 25000000, 40000000, 45000000
+  ];
+  const pSteps = [
+    1000000, 2000000, 3000000, 4000000, 5000000,
+    7000000, 10000000, 12000000, 15000000, 20000000,
+    25000000, 30000000, 40000000, 45000000, 50000000,
+    60000000, 70000000, 80000000, 90000000, 100000000
+  ];
+
+  function fmtWon(n) {
+    if (n >= 100000000) return (n / 100000000).toFixed(2).replace(/\.?0+$/, '') + '억원';
+    if (n >= 10000000) return (n / 10000000).toFixed(1).replace(/\.?0+$/, '') + '천만원';
+    if (n >= 1000000) return (n / 1000000).toFixed(0) + '만원';
+    return n.toLocaleString('ko-KR') + '원';
+  }
+
+  function fmtShort(n) {
+    if (n >= 100000000) return (n / 100000000).toFixed(1) + '억';
+    if (n >= 10000000) return (n / 10000000).toFixed(1) + '천만';
+    if (n >= 1000000) return (n / 1000000).toFixed(0) + '만';
+    return n.toLocaleString('ko-KR');
+  }
 
   let chartInst = null;
 
   function compute() {
-    const P = +document.getElementById('principal').value;
-    const r = +document.getElementById('rate').value / 100;
-    const Y = +document.getElementById('years').value;
+    const pIdx = +document.getElementById('s-principal').value;
+    const P = pSteps[pIdx];
+    const r = +document.getElementById('s-rate').value / 100;
+    const Y = +document.getElementById('s-years').value;
+    const rate = +document.getElementById('s-rate').value;
 
-    document.getElementById('p-out').textContent = fmt(P);
-    document.getElementById('r-out').textContent = (+document.getElementById('rate').value).toFixed(1) + '%';
-    document.getElementById('y-out').textContent = Y + '년';
+    document.getElementById('v-principal').textContent = fmtWon(P);
+    document.getElementById('v-rate').textContent = rate.toFixed(1) + '%';
+    document.getElementById('v-years').textContent = Y + '년';
 
-    const compoundFinal = P * Math.pow(1 + r, Y);
-    const simpleFinal = P + P * r * Y;
+    const compound = P * Math.pow(1 + r, Y);
+    const simple = P + P * r * Y;
 
-    document.getElementById('c-principal').textContent = fmt(P);
-    document.getElementById('c-simple').textContent = fmt(simpleFinal);
-    document.getElementById('c-compound').textContent = fmt(compoundFinal);
+    document.getElementById('r-principal').textContent = fmtWon(P);
+    document.getElementById('r-simple').textContent = fmtWon(Math.round(simple));
+    document.getElementById('r-simple-sub').textContent = '원금 대비 ' + ((simple/P).toFixed(1)) + '배';
+    document.getElementById('r-compound').textContent = fmtWon(Math.round(compound));
+    document.getElementById('r-compound-sub').textContent = '원금 대비 ' + ((compound/P).toFixed(1)) + '배';
 
-    const labels = [];
-    const compoundData = [];
-    const simpleData = [];
-    const principalData = [];
+    const diff = Math.round(compound - simple);
+    const rule72 = Math.round(72 / rate);
+    document.getElementById('insight-text').innerHTML =
+      `복리가 단순 이자보다 <strong>${fmtWon(diff)}</strong> 더 많습니다.<br>` +
+      `연 ${rate.toFixed(1)}% 수익률이면 원금이 2배 되는 데 약 <strong>${rule72}년</strong>이 걸립니다 (72의 법칙).`;
+
+    // Chart data
+    const labels = [], cData = [], sData = [], pData = [];
     for (let y = 0; y <= Y; y++) {
-      labels.push(y + '년');
-      compoundData.push(Math.round(P * Math.pow(1 + r, y)));
-      simpleData.push(Math.round(P + P * r * y));
-      principalData.push(P);
+      labels.push(y === 0 ? '시작' : y + '년');
+      cData.push(Math.round(P * Math.pow(1 + r, y)));
+      sData.push(Math.round(P + P * r * y));
+      pData.push(P);
     }
-
-    const diff = Math.round(compoundFinal - simpleFinal);
-    const ratio = (compoundFinal / P).toFixed(1);
-    document.getElementById('tip-text').textContent =
-      `복리 효과로 단순 이자보다 ${fmt(diff)} 더 많습니다. 원금 대비 ${ratio}배 성장.`;
 
     if (chartInst) chartInst.destroy();
     chartInst = new Chart(document.getElementById('chart'), {
@@ -97,32 +494,31 @@
         datasets: [
           {
             label: '복리',
-            data: compoundData,
-            borderColor: '#1D9E75',
-            backgroundColor: 'rgba(29,158,117,0.08)',
-            borderWidth: 2,
+            data: cData,
+            borderColor: '#4ade80',
+            backgroundColor: 'rgba(74,222,128,0.06)',
+            borderWidth: 2.5,
             pointRadius: 0,
-            fill: false,
-            tension: 0.3
+            fill: true,
+            tension: 0.4
           },
           {
             label: '단순 이자',
-            data: simpleData,
-            borderColor: '#888780',
+            data: sData,
+            borderColor: '#6b7280',
+            borderDash: [5,4],
             borderWidth: 1.5,
             pointRadius: 0,
             fill: false,
-            borderDash: [4, 3],
             tension: 0
           },
           {
             label: '원금',
-            data: principalData,
-            borderColor: '#B4B2A9',
+            data: pData,
+            borderColor: '#374151',
             borderWidth: 1,
             pointRadius: 0,
             fill: false,
-            borderDash: [2, 4],
             tension: 0
           }
         ]
@@ -134,32 +530,71 @@
         plugins: {
           legend: { display: false },
           tooltip: {
+            backgroundColor: '#1c2030',
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 1,
+            titleColor: '#a8b2c8',
+            bodyColor: '#e8ecf4',
+            padding: 10,
             callbacks: {
-              label: ctx => ' ' + ctx.dataset.label + ': ' + fmt(ctx.parsed.y)
+              label: ctx => ' ' + ctx.dataset.label + ': ' + fmtWon(ctx.parsed.y)
             }
           }
         },
         scales: {
           x: {
-            ticks: { maxTicksLimit: 8, autoSkip: true, color: '#888780', font: { size: 11 } },
-            grid: { color: 'rgba(136,135,128,0.15)' }
+            ticks: {
+              maxTicksLimit: 6,
+              autoSkip: true,
+              color: '#5a6478',
+              font: { size: 10, family: 'Noto Sans KR' }
+            },
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            border: { color: 'transparent' }
           },
           y: {
             ticks: {
-              color: '#888780',
-              font: { size: 11 },
-              callback: v => '₩' + (v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(0)+'K' : v)
+              color: '#5a6478',
+              font: { size: 10, family: 'Noto Sans KR' },
+              maxTicksLimit: 5,
+              callback: v => fmtShort(v)
             },
-            grid: { color: 'rgba(136,135,128,0.15)' }
+            grid: { color: 'rgba(255,255,255,0.04)' },
+            border: { color: 'transparent' }
           }
         }
       }
     });
+
+    // Table - milestone years
+    const milestones = [];
+    const step = Y <= 10 ? 1 : Y <= 20 ? 2 : Y <= 30 ? 5 : 5;
+    for (let y = step; y <= Y; y += step) milestones.push(y);
+    if (!milestones.includes(Y)) milestones.push(Y);
+
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = '';
+    milestones.forEach(y => {
+      const cv = Math.round(P * Math.pow(1 + r, y));
+      const sv = Math.round(P + P * r * y);
+      const isDouble = cv >= P * 2;
+      const tr = document.createElement('tr');
+      if (y === Y) tr.classList.add('milestone');
+      tr.innerHTML = `
+        <td>${y}년</td>
+        <td>${fmtWon(P)}</td>
+        <td>${fmtWon(sv)}</td>
+        <td class="${y === Y ? 'td-gold' : 'td-green'}">${fmtWon(cv)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
   }
 
-  ['principal','rate','years'].forEach(id => {
+  ['s-principal','s-rate','s-years'].forEach(id => {
     document.getElementById(id).addEventListener('input', compute);
   });
 
   compute();
 </script>
+</body>
+</html>
